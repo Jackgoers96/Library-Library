@@ -1,78 +1,165 @@
-import React from 'react';
-import { Jumbotron, Container, CardColumns, Card, Button } from 'react-bootstrap';
-import { GET_ME } from '../utils/queries';
-import { REMOVE_BOOK } from '../utils/mutations';
-import { useQuery, useMutation } from '@apollo/client';
-import Auth from '../utils/auth';
-import { removeBookId } from '../utils/localStorage';
+import React, { useState, useEffect } from "react";
+import {
+  Jumbotron,
+  Container,
+  Col,
+  Form,
+  Button,
+  Card,
+  CardColumns,
+} from "react-bootstrap";
+import { useMutation } from "@apollo/client";
+import { SAVE_BOOK } from "../utils/mutations";
+import Auth from "../utils/auth";
+import { searchGoogleBooks } from '../utils/API';
+import { saveBookIds, getSavedBookIds } from "../utils/localStorage";
 
-const SavedBooks = () => {
-  const { loading, data } = useQuery(GET_ME);
-  const userData = data?.me || [];
+const SearchBooks = () => {
+  // create state for holding returned google api data
+  const [searchedBooks, setSearchedBooks] = useState([]);
+  // create state for holding our search field data
+  const [searchInput, setSearchInput] = useState("");
 
-  const removeBook = useMutation(REMOVE_BOOK);
+  // create state to hold saved bookId values
+  const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
 
-  // create function that accepts the book's mongo _id value as param and deletes the book from the database
-  const handleDeleteBook = async (bookId) => {
-    const token = Auth.loggedIn() ? Auth.getToken() : null;
+  //using mutations
+  const [saveBook, { error }] = useMutation(SAVE_BOOK);
 
-    if (!token) {
+  // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
+  useEffect(() => {
+    return () => saveBookIds(savedBookIds);
+  });
+
+  // create method to search for books and set state on form submit
+  const handleFormSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!searchInput) {
       return false;
     }
 
     try {
-      const response = await removeBook({
-        variables: { bookId },
-      });
+      const response = await searchGoogleBooks(searchInput);
 
-      if (!response) {
-        throw new Error('something went wrong!');
+      if (!response.ok) {
+        throw new Error("something went wrong!");
       }
 
-      removeBookId(bookId);
+      const { items } = await response.json();
+
+      const bookData = items.map((book) => ({
+        bookId: book.id,
+        authors: book.volumeInfo.authors || ["No author to display"],
+        title: book.volumeInfo.title,
+        description: book.volumeInfo.description,
+        image: book.volumeInfo.imageLinks?.thumbnail || "",
+      }));
+      console.log(bookData);
+      setSearchedBooks(bookData);
+      setSearchInput("");
     } catch (err) {
       console.error(err);
     }
   };
 
-  // if data isn't here yet, say so
-  if (loading) {
-    return <h2>LOADING...</h2>;
-  }
+
+  const handleSaveBook = async (bookId) => {
+
+    const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
+    console.log(bookToSave);
+    // get token
+    const token = Auth.loggedIn() ? Auth.getToken() : null;
+    if (!token) {
+      return false;
+    }
+
+    try {
+      const { data } = await saveBook({
+        variables: { bookData: bookToSave },
+      });
+      if (!data) {
+        throw new Error("something went wrong!");
+      }
+
+      setSavedBookIds([...savedBookIds, bookToSave.bookId]);
+    } catch (err) {
+      console.error(err);
+
+    }
+  };
 
   return (
     <>
-      <Jumbotron fluid className='text-light bg-dark'>
+      <Jumbotron fluid className="text-light bg-dark">
         <Container>
-          <h1>Viewing saved books!</h1>
+          <h1>Search for Books!</h1>
+          <Form onSubmit={handleFormSubmit}>
+            <Form.Row>
+              <Col xs={12} md={8}>
+                <Form.Control
+                  name="searchInput"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  type="text"
+                  size="lg"
+                  placeholder="Search for a book"
+                />
+              </Col>
+              <Col xs={12} md={4}>
+                <Button type="submit" variant="success" size="lg">
+                  Submit Search
+                </Button>
+              </Col>
+            </Form.Row>
+          </Form>
         </Container>
       </Jumbotron>
+
       <Container>
-        {/* <h2>
-          {userData.savedBooks.length
-            ? `Viewing ${userData.savedBooks.length} saved ${userData.savedBooks.length === 1 ? 'book' : 'books'}:`
-            : 'You have no saved books!'}
-        </h2> */}
+        <h2>
+          {searchedBooks.length
+            ? `Viewing ${searchedBooks.length} results:`
+            : "Search for a book to begin"}
+        </h2>
         <CardColumns>
-          {/* {userData.savedBooks.map((book) => {
+          {searchedBooks.map((book) => {
             return (
-              <Card key={book.bookId} border='dark'>
-                {book.image ? <Card.Img src={book.image} alt={`The cover for ${book.title}`} variant='top' /> : null}
+              <Card key={book.bookId} border="dark">
+                {book.image ? (
+                  <Card.Img
+                    src={book.image}
+                    alt={`The cover for ${book.title}`}
+                    variant="top"
+                  />
+                ) : null}
                 <Card.Body>
                   <Card.Title>{book.title}</Card.Title>
-                  <p className='small'>Authors: {book.authors}</p>
+                  <p className="small">Authors: {book.authors}</p>
                   <Card.Text>{book.description}</Card.Text>
-                  <Button className='btn-block btn-danger' onClick={() => handleDeleteBook(book.bookId)}>
-                    Delete this Book!
-                  </Button>
+                  {Auth.loggedIn() && (
+                    <Button
+                      disabled={savedBookIds?.some(
+                        (savedBookId) => savedBookId === book.bookId
+                      )}
+                      className="btn-block btn-info"
+                      onClick={() => handleSaveBook(book.bookId)}
+                    >
+                      {savedBookIds?.some(
+                        (savedBookId) => savedBookId === book.bookId
+                      )
+                        ? "This book has already been saved!"
+                        : "Save this Book!"}
+                    </Button>
+                  )}
                 </Card.Body>
               </Card>
-            ); */}
-          {/* })} */}
+            );
+          })}
         </CardColumns>
       </Container>
     </>
   );
 };
 
-export default SavedBooks;
+export default SearchBooks;
