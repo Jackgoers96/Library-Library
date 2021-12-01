@@ -10,7 +10,6 @@ module.exports = {
     // allows token to be sent via  req.query or headers
     let token = req.query.token || req.headers.authorization || req.body.token;
 
-
     // ["Bearer", "<tokenvalue>"]
     if (req.headers.authorization) {
       token = token.split(' ').pop().trim();
@@ -28,6 +27,7 @@ module.exports = {
     } catch {
       console.log('Invalid token');
       // return res.status(400).json({ message: 'invalid token!' });
+
     }
 
     // send to next endpoint
