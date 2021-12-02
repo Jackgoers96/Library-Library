@@ -47,7 +47,7 @@ const resolvers = {
           { $push: { savedBooks: bookData } },
           { new: true }
         );
-
+        console.log("updated" + updatedUser + "with" + bookdata)
         return updatedUser;
       }
 
