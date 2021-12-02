@@ -17,7 +17,7 @@ Log in and try it out! Find any book available in Google books and add it to you
 
 #Acknowledgements
 
-Huge thanks to [Nathan Perfetti](]https://github.com/perfettiful) and [Phillip Merriman](https://github.com/phillipmerriman) for their assistance in getting it running. 
+Huge thanks to [Nathan Perfetti](https://github.com/perfettiful) and [Phillip Merriman](https://github.com/phillipmerriman) for their assistance in getting it running. 
 
 #Credits
 Starter code provided by Trilogy Education, modified and deployed by me.
